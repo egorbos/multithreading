@@ -1,0 +1,3 @@
+test:
+  override:
+    - eval "$(curl -sL https://raw.githubusercontent.com/swixbase/ciscript/master/ci-3.1)"
