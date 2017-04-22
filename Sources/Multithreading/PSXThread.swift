@@ -30,23 +30,21 @@ public class PSXThread {
     
     // MARK: Properties, initialization, deinitialization
     
-    /// Friendly id
-    public var id: Int?
-    
     /// Thread name for profiling and debuging
     public var name = "psxthread"
     
     /// Status of the thread.
     internal(set) var status: PSXThreadStatus = .inactive
 
-    /// POSIX pointer to thread
-    internal var pthread: pthread_t?
+    /// POSIX thread
+    #if os(OSX) || os(iOS)
+        fileprivate var pthread: pthread_t? = nil
+    #elseif os(Linux)
+        fileprivate var pthread = pthread_t()
+    #endif
     
     /// The queue from which the jobs are executed sequentially.
-    internal var privateQueue = PSXJobQueue()
-    
-    /// Thread pool.
-    internal var pool: PSXThreadPool?
+    internal let privateQueue = PSXJobQueue()
     
     /// The infinite loop in which the job directed to the thread are executed.
     internal var runLoop: PSXRunLoop?
@@ -79,9 +77,7 @@ public class PSXThread {
         addJob(job)
     }
     
-    deinit {
-        exit()
-    }
+    deinit { exit() }
     
     // MARK: Methods
     
@@ -94,9 +90,7 @@ public class PSXThread {
     /// Starts an infinite loop in which the job directed to the thread are executed.
     ///
     internal func run() {
-        if let runLoop = runLoop {
-            runLoop.start()
-        }
+        if let runLoop = runLoop { runLoop.start() }
     }
 
     /// Puts a block of code in a private queue.
@@ -105,17 +99,6 @@ public class PSXThread {
     ///
     public func doJob(_ block: @escaping () -> Void) {
         let job = PSXJob(block: block)
-        privateQueue.put(newJob: job)
-    }
-    
-    /// Puts a function in a private queue.
-    ///
-    /// - Parameters:
-    ///   - function: Function that will be performed.
-    ///   - argument: Function's argument.
-    ///
-    public func addJob(function: @escaping (UnsafeMutableRawPointer?) -> Void, argument: UnsafeMutableRawPointer?) {
-        let job = PSXJob(function: function, arg: argument)
         privateQueue.put(newJob: job)
     }
     
@@ -131,9 +114,7 @@ public class PSXThread {
     ///
     public func exit() {
         doJob {
-            if let runLoop = self.runLoop {
-                runLoop.stop()
-            }
+            if let runLoop = self.runLoop { runLoop.stop() }
             pthread_exit(nil)
         }
         status = .inactive

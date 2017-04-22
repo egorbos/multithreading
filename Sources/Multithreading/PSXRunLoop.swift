@@ -41,14 +41,16 @@ internal class PSXRunLoop {
             
             if let job = thread.privateQueue.pull() {
                 thread.status = .working
-                job.function(job.arg)
+                job.block()
                 thread.status = .waiting
-            }
-            
-            if let pool = thread.pool {
-                let working = pool.workingThreads
-                if pool.waiting == true && working.count == 0 {
-                    pool.jobsHasFinished.signal()
+                
+                if thread is PSXWorkerThread {
+                    let workerThread = thread as! PSXWorkerThread
+                    let pool = workerThread.pool
+                    let working = pool.workingThreads
+                    if pool.waiting == true && working.count == 0 {
+                        pool.jobsHasFinished.signal()
+                    }
                 }
             }
         }

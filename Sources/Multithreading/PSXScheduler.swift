@@ -17,10 +17,10 @@ import Foundation
 internal class PSXScheduler {
     
     /// A thread pool for assigning jobs in it.
-    fileprivate var pool: PSXThreadPool
+    fileprivate let pool: PSXThreadPool
     
     /// The thread for assigning jobs from global queue of thread pool to worker threads.
-    fileprivate var assigningThread = PSXThread()
+    fileprivate let assigningThread = PSXThread()
     
     /// Initialization.
     ///
@@ -28,9 +28,7 @@ internal class PSXScheduler {
     ///
     internal init(forPool pool: PSXThreadPool) {
         self.pool = pool
-        assigningThread.doJob {
-            self.startAssigningJobs()
-        }
+        assigningThread.doJob { self.startAssigningJobs() }
         assigningThread.name = "scheduler-psxthread"
         assigningThread.start()
     }

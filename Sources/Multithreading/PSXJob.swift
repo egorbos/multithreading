@@ -16,30 +16,15 @@ import Foundation
 
 internal class PSXJob {
     
-    /// Function to be performed.
-    internal let function: (UnsafeMutableRawPointer?) -> Void
-    
-    /// Function's argument.
-    fileprivate(set) var arg: UnsafeMutableRawPointer?
+    /// Block to be performed.
+    internal let block: () -> Void
     
     /// Initialization.
     ///
     /// - Parameter block: A block of code that will be performed.
     ///
     internal init(block: @escaping () -> Void) {
-        function = { _ in block() }
-        arg = nil
-    }
-    
-    /// Initialization.
-    ///
-    /// - Parameters:
-    ///   - function: Function that will be performed.
-    ///   - arg:      Function's argument.
-    ///
-    internal init(function: @escaping (UnsafeMutableRawPointer?) -> Void, arg: UnsafeMutableRawPointer?) {
-        self.function = function
-        self.arg = arg
+        self.block = { _ in block() }
     }
     
 }

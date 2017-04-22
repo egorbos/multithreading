@@ -21,7 +21,195 @@ class MultithreadingTests: XCTestCase {
 
     static var allTests : [(String, (MultithreadingTests) -> () throws -> Void)] {
         return [
+            ("testStartThread", testStartThread),
+            ("testThreadDoJob", testThreadDoJob),
+            ("testThreadPoolAddJob", testThreadPoolAddJob),
+            ("testThreadPoolWait", testThreadPoolWait),
+            ("testThreadPoolNewThread", testThreadPoolNewThread),
+            ("testThreadPoolNewThreadForKey", testThreadPoolNewThreadForKey),
+            ("testThreadPoolDestroyThreadForKey", testThreadPoolDestroyThreadForKey),
+            ("testThreadPoolSingletoneInstance", testThreadPoolSingletoneInstance),
+            ("testQueuePerformCode", testQueuePerformCode)
         ]
+    }
+    
+    func testStartThread() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+
+        let thread = PSXThread {
+            mutex.lock()
+            started = true
+            condition.signal()
+            mutex.unlock()
+        }
+        thread.start()
+
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+    }
+    
+    func testThreadDoJob() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let thread = PSXThread()
+        thread.start()
+        thread.doJob {
+            mutex.lock()
+            started = true
+            condition.signal()
+            mutex.unlock()
+        }
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+    }
+    
+    func testThreadPoolAddJob() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let pool = PSXThreadPool(count: 2)
+        pool.addJob {
+            mutex.lock()
+            started = true
+            XCTAssertEqual(pool.aliveThreads.count, 2)
+            XCTAssertEqual(pool.workingThreads.count, 1)
+            XCTAssertEqual(pool.waitingThreads.count, 1)
+            condition.signal()
+            mutex.unlock()
+        }
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+        XCTAssertEqual(pool.aliveThreads.count, 2)
+        XCTAssertEqual(pool.workingThreads.count, 0)
+        XCTAssertEqual(pool.waitingThreads.count, 2)
+    }
+    
+    func testThreadPoolWait() {
+        var started = false
+        
+        let pool = PSXThreadPool(count: 2)
+        pool.addJob {
+            started = true
+        }
+        
+        pool.wait()
+        XCTAssertTrue(started)
+    }
+    
+    func testThreadPoolNewThread() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let pool = PSXThreadPool(count: 1)
+        XCTAssertEqual(pool.aliveThreads.count, 1)
+        XCTAssertEqual(pool.workingThreads.count, 0)
+        XCTAssertEqual(pool.waitingThreads.count, 1)
+        
+        let thread = pool.newThread()
+        thread.doJob {
+            mutex.lock()
+            started = true
+            XCTAssertEqual(pool.aliveThreads.count, 2)
+            XCTAssertEqual(pool.workingThreads.count, 1)
+            XCTAssertEqual(pool.waitingThreads.count, 1)
+            condition.signal()
+            mutex.unlock()
+        }
+
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+        XCTAssertEqual(pool.aliveThreads.count, 2)
+        XCTAssertEqual(pool.workingThreads.count, 0)
+        XCTAssertEqual(pool.waitingThreads.count, 2)
+    }
+    
+    func testThreadPoolNewThreadForKey() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let pool = PSXThreadPool(count: 1)
+        pool.newThread(forKey: "👻")
+        if let thread = pool.getThread(forKey: "👻") {
+            thread.doJob {
+                mutex.lock()
+                started = true
+                condition.signal()
+                mutex.unlock()
+            }
+        }
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+    }
+    
+    func testThreadPoolDestroyThreadForKey() {
+        let pool = PSXThreadPool(count: 1)
+        pool.newThread(forKey: "TEST")
+        XCTAssertNotNil(pool.getThread(forKey: "TEST"))
+        pool.destroyThread(forKey: "TEST")
+        XCTAssertNil(pool.getThread(forKey: "TEST"))
+    }
+    
+    func testThreadPoolSingletoneInstance() {
+        var started = false
+
+        let pool = PSXThreadPool.default
+        pool.addJob {
+            started = true
+        }
+        
+        pool.wait()
+        XCTAssertTrue(started)
+    }
+    
+    func testQueuePerformCode() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let queue = PSXQueue(name: "test", type: .serial)
+        queue.perform {
+            mutex.lock()
+            started = true
+            condition.signal()
+            mutex.unlock()
+        }
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
     }
 
 }

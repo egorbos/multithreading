@@ -20,7 +20,7 @@ internal class PSXJobQueue {
     fileprivate var jobs: [PSXJob] = []
     
     /// Mutex for queue r/w access.
-    fileprivate var rwmutex = PSXMutex()
+    fileprivate let rwmutex = PSXMutex()
     
     /// Flag as binary semaphore.
     fileprivate(set) var hasJobs = PSXSemaphore(value: .zero)
@@ -40,12 +40,9 @@ internal class PSXJobQueue {
         var job: PSXJob?
         if jobs.count > 0 {
             job = jobs.remove(at: 0)
-            if jobs.count > 0 {
-                hasJobs.post()
-            }
+            if jobs.count > 0 { hasJobs.post() }
         }
         rwmutex.unlock()
-        
         return job
     }
     

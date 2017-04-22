@@ -22,7 +22,7 @@ public enum PSXQueueType {
 public class PSXQueue {
     
     /// A thread pool in which jobs are performed.
-    fileprivate var pool: PSXThreadPool
+    fileprivate let pool: PSXThreadPool
     
     /// Initialization.
     ///
@@ -50,8 +50,6 @@ public class PSXQueue {
         pool.addJob(block)
     }
  
-    deinit {
-        pool.destroy()
-    }
+    deinit { pool.destroy() }
 
 }

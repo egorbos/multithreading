@@ -26,17 +26,16 @@ public class PSXThreadPool {
     internal var userThreadsKeys: [AnyHashable: Int] = [:]
 
     /// Global jobs queue.
-    internal var globalQueue = PSXJobQueue()
+    internal let globalQueue = PSXJobQueue()
 
     /// Condition variable for get notification when all jobs from global queue are complete.
-    internal var jobsHasFinished = PSXCondition()
+    internal let jobsHasFinished = PSXCondition()
     
     /// Mutex for waiting to complete all jobs from the global queue.
-    internal var jobsMutex = PSXMutex()
+    internal let jobsMutex = PSXMutex()
 
-    /// Mutex for get (alive,waiting, working) threads.
-    internal var threadsMutex = PSXMutex()
-
+    /// Mutex for get (alive, waiting, working) threads.
+    internal let threadsMutex = PSXMutex()
 
     /// Prefix for threads name. 
     /// If creating PSXQueue, then it changes this value to its own name.
@@ -46,7 +45,7 @@ public class PSXThreadPool {
     internal var waiting = false
     
     /// Returns alive worker threads in pool
-    internal var aliveThreads: [PSXWorkerThread] {
+    public var aliveThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let alive = workerThreads.filter{ $0.value.status != .inactive }.map{ $0.value }
         threadsMutex.unlock()
@@ -54,7 +53,7 @@ public class PSXThreadPool {
     }
     
     /// Returns the worker threads that are waiting for jobs
-    internal var waitingThreads: [PSXWorkerThread] {
+    public var waitingThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let waiting = workerThreads.filter{ $0.value.status == .waiting }.map{ $0.value }
         threadsMutex.unlock()
@@ -62,7 +61,7 @@ public class PSXThreadPool {
     }
     
     /// Returns the worker threads that are currently working
-    internal var workingThreads: [PSXWorkerThread] {
+    public var workingThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let working = workerThreads.filter{ $0.value.status == .working }.map{ $0.value }
         threadsMutex.unlock()
@@ -87,18 +86,14 @@ public class PSXThreadPool {
         scheduler = PSXScheduler(forPool: self)
     }
     
-    deinit {
-        destroy()
-    }
+    deinit { destroy() }
     
     /// Creates a certain number of threads.
     ///
     /// Parameter count: The number of threads to create.
     ///
     fileprivate func createThreads(_ count: Int) {
-        for _ in 0 ..< count {
-            createThread()
-        }
+        for _ in 0 ..< count { createThread() }
     }
     
     /// Creates new thread.
@@ -160,17 +155,6 @@ public class PSXThreadPool {
     
     /// Adds job to the thread pool.
     ///
-    /// - Parameters:
-    ///   - function: Function that will be performed.
-    ///   - argument: Function's argument.
-    ///
-    public func addJob(function: @escaping (UnsafeMutableRawPointer?) -> Void, argument: UnsafeMutableRawPointer?) {
-        let newJob = PSXJob(function: function, arg: argument)
-        globalQueue.put(newJob: newJob)
-    }
-    
-    /// Adds job to the thread pool.
-    ///
     /// - Parameter block: A block of code that will be performed.
     ///
     public func addJob(_ block: @escaping () -> Void) {
@@ -193,12 +177,8 @@ public class PSXThreadPool {
     /// Terminates all worker threads, and scheduler threads.
     ///
     internal func destroy() {
-        for worker in workerThreads {
-            worker.value.exit()
-        }
-        if let sh = scheduler {
-            sh.destroy()
-        }
+        for worker in workerThreads { worker.value.exit() }
+        if let sh = scheduler { sh.destroy() }
     }
     
     func pause() {

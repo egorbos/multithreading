@@ -14,7 +14,15 @@
 
 import Foundation
 
-internal class PSXWorkerThread: PSXThread {
+public class PSXWorkerThread: PSXThread {
+    
+    // MARK: Properties, initialization, deinitialization
+    
+    /// Friendly id
+    public let id: Int
+    
+    /// Thread pool.
+    internal let pool: PSXThreadPool
     
     /// Initialization.
     ///
@@ -23,9 +31,9 @@ internal class PSXWorkerThread: PSXThread {
     ///   - id:   A friendly id of created thread.
     ///   
     internal init(pool: PSXThreadPool, id: Int) {
-        super.init()
         self.id = id
         self.pool = pool
+        super.init()
     }
     
 }

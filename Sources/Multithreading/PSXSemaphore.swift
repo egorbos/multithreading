@@ -62,9 +62,7 @@ public class PSXSemaphore {
     ///
     public func wait() {
         mutex.lock()
-        while value != .one {
-            condition.wait(mutex: mutex)
-        }
+        while value != .one { condition.wait(mutex: mutex) }
         value = .zero
         mutex.unlock()
     }
