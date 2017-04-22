@@ -139,7 +139,7 @@ public class PSXThread {
 
 /// Main routine of starting thread.
 #if os(OSX) || os(iOS)
-    func runThread (arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
+    func runThread(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
         /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
         let thread = arg.assumingMemoryBound(to: PSXThread.self).pointee
         /// Set thread name for profiling and debuging
@@ -153,12 +153,12 @@ public class PSXThread {
         return nil
     }
 #elseif os(Linux)
-    func runThread (arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
+    func runThread(arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
         /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
         if let thread = arg?.assumingMemoryBound(to: PSXThread.self).pointee {
             /// Set thread name for profiling and debuging
-            if let nameData = thread.name.cString(using: .utf8), let pthread = thread.pthread {
-                pthread_setname_np(pthread, nameData)
+            if let nameData = thread.name.cString(using: .utf8) {
+                pthread_setname_np(pthread_self(), nameData)
             }
             
             /// Run the execution loop.
