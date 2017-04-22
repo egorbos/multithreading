@@ -60,8 +60,15 @@ public class PSXThread {
     public init() {
         withUnsafeMutablePointer(to: &attributes) { attrib in
             pthread_attr_init(attrib)
-            pthread_attr_setscope(attrib, PTHREAD_SCOPE_SYSTEM)
-            pthread_attr_setdetachstate(attrib, PTHREAD_CREATE_DETACHED)
+            #if os(OSX) || os(iOS)
+                let scope = PTHREAD_SCOPE_SYSTEM
+                let detached = PTHREAD_CREATE_DETACHED
+            #elseif os(Linux)
+                let scope = Int32(PTHREAD_SCOPE_SYSTEM)
+                let detached = Int32(PTHREAD_CREATE_DETACHED)
+            #endif
+            pthread_attr_setscope(attrib, scope)
+            pthread_attr_setdetachstate(attrib, detached)
         }
         current = self
         runLoop = PSXRunLoop(for: self)
@@ -131,22 +138,33 @@ public class PSXThread {
 }
 
 /// Main routine of starting thread.
-fileprivate func runThread(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
-    
-    /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
-    let thread = arg.assumingMemoryBound(to: PSXThread.self).pointee
-    
-    /// Set thread name for profiling and debuging 
-    if let nameData = thread.name.cString(using: .utf8) {
-        #if os(macOS) || os(iOS)
+#if os(OSX) || os(iOS)
+    func runThread (arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
+        /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
+        let thread = arg.assumingMemoryBound(to: PSXThread.self).pointee
+        /// Set thread name for profiling and debuging
+        if let nameData = thread.name.cString(using: .utf8) {
             pthread_setname_np(nameData)
-        #elseif os(Linux) || CYGWIN
-            prctl(PR_SET_NAME, nameData)
-        #endif
+        }
+        
+        /// Run the execution loop.
+        thread.run()
+        
+        return nil
     }
-
-    /// Run the execution loop.
-    thread.run()
-    
-    return nil
-}
+#elseif os(Linux)
+    func runThread (arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
+        /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
+        if let thread = arg?.assumingMemoryBound(to: PSXThread.self).pointee {
+            /// Set thread name for profiling and debuging
+            if let nameData = thread.name.cString(using: .utf8), let pthread = thread.pthread {
+                pthread_setname_np(pthread, nameData)
+            }
+            
+            /// Run the execution loop.
+            thread.run()
+        }
+        
+        return nil
+    }
+#endif
