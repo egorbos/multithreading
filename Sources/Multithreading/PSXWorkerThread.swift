@@ -18,11 +18,11 @@ public class PSXWorkerThread: PSXThread {
     
     // MARK: Properties, initialization, deinitialization
     
-    /// Friendly id
-    public let id: Int
-    
     /// Thread pool.
     internal let pool: PSXThreadPool
+    
+    /// Friendly id
+    public let id: Int
     
     /// Initialization.
     ///
@@ -38,7 +38,7 @@ public class PSXWorkerThread: PSXThread {
     
 }
 
-internal extension Array where Element == PSXWorkerThread {
+internal extension Array where Element: PSXWorkerThread {
     internal func withMinJobs() -> Element {
         let min = self.min { $0.privateQueue.jobsCount < $1.privateQueue.jobsCount }
         return min!

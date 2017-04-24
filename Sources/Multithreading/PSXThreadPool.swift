@@ -20,26 +20,25 @@ public class PSXThreadPool {
     fileprivate var scheduler: PSXScheduler?
 
     /// The worker threads.
-    internal var workerThreads: [Int: PSXWorkerThread] = [:]
+    fileprivate var workerThreads: [Int: PSXWorkerThread] = [:]
 
     /// The keys with which the user created threads.
-    internal var userThreadsKeys: [AnyHashable: Int] = [:]
-
-    /// Global jobs queue.
-    internal let globalQueue = PSXJobQueue()
-
-    /// Condition variable for get notification when all jobs from global queue are complete.
-    internal let jobsHasFinished = PSXCondition()
+    fileprivate var userThreadsKeys: [AnyHashable: Int] = [:]
     
     /// Mutex for waiting to complete all jobs from the global queue.
-    internal let jobsMutex = PSXMutex()
+    fileprivate let jobsMutex = PSXMutex()
 
     /// Mutex for get (alive, waiting, working) threads.
-    internal let threadsMutex = PSXMutex()
-
-    /// Prefix for threads name. 
-    /// If creating PSXQueue, then it changes this value to its own name.
-    internal var threadsNamePrefix = "pool"
+    fileprivate let threadsMutex = PSXMutex()
+    
+    /// Prefix for threads name.
+    internal var prefix = "com.swixbase.multithreading"
+    
+    /// Global jobs queue.
+    internal let globalQueue = PSXJobQueue()
+    
+    /// Condition variable for get notification when all jobs from global queue are complete.
+    internal let jobsHasFinished = PSXCondition()
     
     /// The status of waiting for the completion of all jobs from the global queue
     internal var waiting = false
@@ -103,7 +102,7 @@ public class PSXThreadPool {
     fileprivate func createThread() -> Int {
         let id = workerThreads.count
         let thread = PSXWorkerThread(pool: self, id: id)
-        let name = "\(threadsNamePrefix)-psxthread-\(id)"
+        let name = "\(prefix).psxthread-\(id)"
         thread.name = name
         workerThreads[id] = thread
         thread.start()

@@ -39,7 +39,7 @@ public class PSXQueue {
         } else {
             pool = PSXThreadPool(count: 1)
         }
-        pool.threadsNamePrefix = name
+        pool.prefix = name
     }
     
     /// Performs the block of code.

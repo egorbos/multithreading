@@ -16,8 +16,8 @@ import Foundation
 
 internal class PSXJob {
     
-    /// Block to be performed.
-    internal let block: () -> Void
+    /// A block of code to be performed.
+    fileprivate let block: () -> Void
     
     /// Initialization.
     ///
@@ -25,6 +25,10 @@ internal class PSXJob {
     ///
     internal init(block: @escaping () -> Void) {
         self.block = { _ in block() }
+    }
+    
+    internal func make() {
+        block()
     }
     
 }

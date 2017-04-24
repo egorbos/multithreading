@@ -29,7 +29,7 @@ internal class PSXScheduler {
     internal init(forPool pool: PSXThreadPool) {
         self.pool = pool
         assigningThread.doJob { self.startAssigningJobs() }
-        assigningThread.name = "scheduler-psxthread"
+        assigningThread.name = "com.swixbase.multithreading.psxscheduler"
         assigningThread.start()
     }
     
