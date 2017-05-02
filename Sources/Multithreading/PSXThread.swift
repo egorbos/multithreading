@@ -14,8 +14,9 @@
 
 #if os(macOS) || os(iOS)
     import Darwin
-#elseif os(Linux) || CYGWIN
+#elseif os(Linux)
     import Glibc
+    import Linuxhelper
 #endif
 
 import Foundation
@@ -32,9 +33,9 @@ public class PSXThread {
     
     /// POSIX thread
     #if os(OSX) || os(iOS)
-        fileprivate var pthread: pthread_t? = nil
+        internal var pthread: pthread_t? = nil
     #elseif os(Linux)
-        fileprivate var pthread = pthread_t()
+        internal var pthread = pthread_t()
     #endif
     
     /// Attributes with which the thread will be created.
@@ -53,22 +54,21 @@ public class PSXThread {
     public internal(set) var status: PSXThreadStatus = .inactive
     
     /// Thread name for profiling and debuging
-    public var name = "com.swixbase.multithreading.psxthread"
-
+    public var name: String {
+        set {
+            if status == .inactive { _name = newValue }
+        }
+        get { return _name }
+    }
+    fileprivate var _name = "com.swixbase.multithreading.psxthread"
+    
     /// Initialization.
     ///
     public init() {
         withUnsafeMutablePointer(to: &attributes) { attrib in
             pthread_attr_init(attrib)
-            #if os(OSX) || os(iOS)
-                let scope = PTHREAD_SCOPE_SYSTEM
-                let detached = PTHREAD_CREATE_DETACHED
-            #elseif os(Linux)
-                let scope = Int32(PTHREAD_SCOPE_SYSTEM)
-                let detached = Int32(PTHREAD_CREATE_DETACHED)
-            #endif
-            pthread_attr_setscope(attrib, scope)
-            pthread_attr_setdetachstate(attrib, detached)
+            pthread_attr_setscope(attrib, Int32(PTHREAD_SCOPE_SYSTEM))
+            pthread_attr_setdetachstate(attrib, Int32(PTHREAD_CREATE_DETACHED))
         }
         current = self
         runLoop = PSXRunLoop(for: self)
@@ -126,19 +126,6 @@ public class PSXThread {
         }
         status = .inactive
     }
-
-    /// Set thread name for profiling and debuging
-    ///
-    fileprivate func setName() {
-        if let nameData = name.cString(using: .utf8) {
-            #if os(OSX) || os(iOS)
-                pthread_setname_np(nameData)
-            #elseif os(Linux)
-                // pthread_setname_np(pthread_self(), nameData)
-                // Unimplemented
-            #endif
-        }
-    }
     
     func pause() {
         /// Unimplemented
@@ -152,18 +139,26 @@ public class PSXThread {
 
 /// Main routine of starting thread.
 #if os(OSX) || os(iOS)
-    func runThread(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
+    fileprivate func runThread(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
         /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
         let thread = arg.assumingMemoryBound(to: PSXThread.self).pointee
-        thread.setName()
+        /// Set thread name for profiling and debugging
+        if let nameChars = thread.name.cString(using: .utf8) {
+            pthread_setname_np(nameChars)
+        }
+        /// Starts an infinite loop in which the job directed to the thread are executed.
         thread.run()
         return nil
     }
 #elseif os(Linux)
-    func runThread(arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
+    fileprivate func runThread(arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
         /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
         if let thread = arg?.assumingMemoryBound(to: PSXThread.self).pointee {
-            thread.setName()
+            /// Set thread name for profiling and debugging
+            if let nameChars = thread.name.cString(using: .utf8) {
+                linux_pthread_setname_np(thread.pthread, nameChars)
+            }
+            /// Starts an infinite loop in which the job directed to the thread are executed.
             thread.run()
         }
         return nil

@@ -15,6 +15,13 @@
 import XCTest
 import Foundation
 
+#if os(macOS) || os(iOS)
+    import Darwin
+#elseif os(Linux)
+    import Glibc
+    import Linuxhelper
+#endif
+
 @testable import Multithreading
 
 class MultithreadingTests: XCTestCase {
@@ -29,30 +36,24 @@ class MultithreadingTests: XCTestCase {
             ("testThreadPoolNewThreadForKey", testThreadPoolNewThreadForKey),
             ("testThreadPoolDestroyThreadForKey", testThreadPoolDestroyThreadForKey),
             ("testThreadPoolSingletoneInstance", testThreadPoolSingletoneInstance),
-            ("testQueuePerformCode", testQueuePerformCode)
+            ("testQueuePerformCode", testQueuePerformCode),
+            ("testSetThreadName", testSetThreadName)
         ]
     }
     
-    func testStartThread() {
-        var started = false
-        let condition = PSXCondition()
-        let mutex = PSXMutex()
-
-        let thread = PSXThread {
-            mutex.lock()
-            started = true
-            condition.signal()
-            mutex.unlock()
-        }
-        thread.start()
-
-        mutex.lock()
-        if !started {
-            condition.wait(mutex: mutex)
-        }
-        mutex.unlock()
-        XCTAssertTrue(started)
+    // MARK: - Helpers
+    
+    internal func getThreadName() -> String {
+        var buffer = [Int8](repeating: 0, count: 16)
+        #if os(OSX) || os(iOS)
+            pthread_getname_np(pthread_self(), &buffer, buffer.count)
+        #elseif os(Linux)
+            linux_pthread_getname_np(pthread_self(), &buffer, buffer.count)
+        #endif
+        return String(cString: &buffer)
     }
+    
+    // MARK: - Tests
     
     func testThreadDoJob() {
         var started = false
@@ -74,6 +75,25 @@ class MultithreadingTests: XCTestCase {
         }
         mutex.unlock()
         XCTAssertTrue(started)
+    }
+    
+    func testSetThreadName() {
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let thread = PSXThread()
+        XCTAssertNotEqual(thread.name, "abcdefghgfedcba")
+        thread.name = "abcdefghgfedcba"
+        XCTAssertEqual(thread.name, "abcdefghgfedcba")
+        thread.doJob {
+            XCTAssertEqual(self.getThreadName(), "abcdefghgfedcba")
+            condition.signal()
+        }
+        thread.start()
+
+        mutex.lock()
+        condition.wait(mutex: mutex)
+        mutex.unlock()
     }
     
     func testThreadPoolAddJob() {
@@ -203,6 +223,27 @@ class MultithreadingTests: XCTestCase {
             condition.signal()
             mutex.unlock()
         }
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+    }
+    
+    func testStartThread() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let thread = PSXThread {
+            mutex.lock()
+            started = true
+            condition.signal()
+            mutex.unlock()
+        }
+        thread.start()
         
         mutex.lock()
         if !started {

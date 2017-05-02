@@ -15,5 +15,8 @@
 import PackageDescription
 
 let package = Package(
-    name: "Multithreading"
+    name: "Multithreading",
+    dependencies: [
+        .Package(url: "https://github.com/swixbase/linuxhelper.git", Version(0,1,0))
+    ]
 )

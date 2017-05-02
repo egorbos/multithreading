@@ -14,7 +14,7 @@
 
 #if os(macOS) || os(iOS)
     import Darwin
-#elseif os(Linux) || CYGWIN
+#elseif os(Linux)
     import Glibc
 #endif
 
