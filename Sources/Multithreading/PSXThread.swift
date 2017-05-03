@@ -25,6 +25,7 @@ public enum PSXThreadStatus: UInt8 {
     case inactive = 0
     case waiting  = 1
     case working  = 2
+    case paused   = 3
 }
 
 public class PSXThread {
@@ -43,6 +44,9 @@ public class PSXThread {
     
     /// Link to the self, that will be sended to the main routine to run in it run loop of the thread.
     fileprivate var current: PSXThread?
+    
+    /// Blocked signal for resuming thread work.
+    fileprivate var resumeSignal = sigset_t()
     
     /// The queue from which the jobs are executed sequentially.
     internal let privateQueue = PSXJobQueue()
@@ -70,6 +74,9 @@ public class PSXThread {
             pthread_attr_setscope(attrib, Int32(PTHREAD_SCOPE_SYSTEM))
             pthread_attr_setdetachstate(attrib, Int32(PTHREAD_CREATE_DETACHED))
         }
+        sigemptyset(&resumeSignal)
+        sigaddset(&resumeSignal, SIGUSR1)
+        pthread_sigmask(SIG_BLOCK, &resumeSignal, nil)
         current = self
         runLoop = PSXRunLoop(for: self)
     }
@@ -127,12 +134,28 @@ public class PSXThread {
         status = .inactive
     }
     
-    func pause() {
-        /// Unimplemented
+    /// Pause the execution of jobs by the current thread.
+    ///
+    public func pause() {
+        doJob {
+            if let runLoop = self.runLoop {
+                runLoop.stop()
+                self.status = .paused
+                var sig: Int32 = 0
+                sigwait(&self.resumeSignal, &sig)
+                runLoop.start()
+            }
+        }
     }
     
-    func resume() {
-        /// Unimplemented
+    /// Resumes execution of jobs.
+    ///
+    public func resume() {
+        #if os(OSX) || os(iOS)
+            pthread_kill(pthread!, SIGUSR1)
+        #elseif os(Linux)
+            pthread_kill(pthread, SIGUSR1)
+        #endif
     }
     
 }

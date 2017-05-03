@@ -37,7 +37,8 @@ class MultithreadingTests: XCTestCase {
             ("testThreadPoolDestroyThreadForKey", testThreadPoolDestroyThreadForKey),
             ("testThreadPoolSingletoneInstance", testThreadPoolSingletoneInstance),
             ("testQueuePerformCode", testQueuePerformCode),
-            ("testSetThreadName", testSetThreadName)
+            ("testSetThreadName", testSetThreadName),
+            ("testPauseResumeThread", testPauseResumeThread)
         ]
     }
     
@@ -54,6 +55,27 @@ class MultithreadingTests: XCTestCase {
     }
     
     // MARK: - Tests
+    
+    func testStartThread() {
+        var started = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let thread = PSXThread {
+            mutex.lock()
+            started = true
+            condition.signal()
+            mutex.unlock()
+        }
+        thread.start()
+        
+        mutex.lock()
+        if !started {
+            condition.wait(mutex: mutex)
+        }
+        mutex.unlock()
+        XCTAssertTrue(started)
+    }
     
     func testThreadDoJob() {
         var started = false
@@ -75,25 +97,6 @@ class MultithreadingTests: XCTestCase {
         }
         mutex.unlock()
         XCTAssertTrue(started)
-    }
-    
-    func testSetThreadName() {
-        let condition = PSXCondition()
-        let mutex = PSXMutex()
-        
-        let thread = PSXThread()
-        XCTAssertNotEqual(thread.name, "abcdefghgfedcba")
-        thread.name = "abcdefghgfedcba"
-        XCTAssertEqual(thread.name, "abcdefghgfedcba")
-        thread.doJob {
-            XCTAssertEqual(self.getThreadName(), "abcdefghgfedcba")
-            condition.signal()
-        }
-        thread.start()
-
-        mutex.lock()
-        condition.wait(mutex: mutex)
-        mutex.unlock()
     }
     
     func testThreadPoolAddJob() {
@@ -232,25 +235,51 @@ class MultithreadingTests: XCTestCase {
         XCTAssertTrue(started)
     }
     
-    func testStartThread() {
-        var started = false
+    func testSetThreadName() {
         let condition = PSXCondition()
         let mutex = PSXMutex()
         
-        let thread = PSXThread {
-            mutex.lock()
-            started = true
+        let thread = PSXThread()
+        XCTAssertNotEqual(thread.name, "abcdefghgfedcba")
+        thread.name = "abcdefghgfedcba"
+        XCTAssertEqual(thread.name, "abcdefghgfedcba")
+        thread.doJob {
+            XCTAssertEqual(self.getThreadName(), "abcdefghgfedcba")
             condition.signal()
-            mutex.unlock()
         }
         thread.start()
         
         mutex.lock()
-        if !started {
+        condition.wait(mutex: mutex)
+        mutex.unlock()
+    }
+    
+    func testPauseResumeThread() {
+        var resumed = false
+        let condition = PSXCondition()
+        let mutex = PSXMutex()
+        
+        let thread = PSXThread()
+        thread.start()
+        thread.pause()
+        
+        while thread.status != .paused {}
+        
+        thread.doJob {
+            mutex.lock()
+            resumed = true
+            condition.signal()
+            mutex.unlock()
+        }
+
+        thread.resume()
+        
+        mutex.lock()
+        if !resumed {
             condition.wait(mutex: mutex)
         }
         mutex.unlock()
-        XCTAssertTrue(started)
+        XCTAssertTrue(resumed)
     }
 
 }

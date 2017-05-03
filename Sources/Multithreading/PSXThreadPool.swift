@@ -28,7 +28,7 @@ public class PSXThreadPool {
     /// Mutex for waiting to complete all jobs from the global queue.
     fileprivate let jobsMutex = PSXMutex()
 
-    /// Mutex for get (alive, waiting, working) threads.
+    /// Mutex for get (alive, waiting, working, paused) threads.
     fileprivate let threadsMutex = PSXMutex()
     
     /// Prefix for threads name.
@@ -40,10 +40,10 @@ public class PSXThreadPool {
     /// Condition variable for get notification when all jobs from global queue are complete.
     internal let jobsHasFinished = PSXCondition()
     
-    /// The status of waiting for the completion of all jobs from the global queue
+    /// The status of waiting for the completion of all jobs from the global queue.
     internal var waiting = false
     
-    /// Returns alive worker threads in pool
+    /// Returns alive worker threads in pool.
     public var aliveThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let alive = workerThreads.filter{ $0.value.status != .inactive }.map{ $0.value }
@@ -51,7 +51,7 @@ public class PSXThreadPool {
         return alive
     }
     
-    /// Returns the worker threads that are waiting for jobs
+    /// Returns the worker threads that are waiting for jobs.
     public var waitingThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let waiting = workerThreads.filter{ $0.value.status == .waiting }.map{ $0.value }
@@ -59,10 +59,18 @@ public class PSXThreadPool {
         return waiting
     }
     
-    /// Returns the worker threads that are currently working
+    /// Returns the worker threads that are currently working.
     public var workingThreads: [PSXWorkerThread] {
         threadsMutex.lock()
         let working = workerThreads.filter{ $0.value.status == .working }.map{ $0.value }
+        threadsMutex.unlock()
+        return working
+    }
+    
+    /// Returns the worker threads that are currently paused.
+    public var pausedThreads: [PSXWorkerThread] {
+        threadsMutex.lock()
+        let working = workerThreads.filter{ $0.value.status == .paused }.map{ $0.value }
         threadsMutex.unlock()
         return working
     }
