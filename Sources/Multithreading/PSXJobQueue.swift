@@ -33,28 +33,38 @@ internal class PSXJobQueue {
         return jbscount
     }
     
+}
+
+extension PSXJobQueue {
+    
+    /// Adds job to queue.
+    ///
+    /// - Parameters:
+    ///   - newJob:    The job to be performed.
+    ///   - priority:  If equals .high, the job is inserted at the beginning of the queue.
+    ///
+    internal func put(newJob: PSXJob, priority: PSXJobPriority) {
+        rwmutex.lock()
+        if priority == .high {
+            jobs.insert(newJob, at: jobs.startIndex)
+        } else {
+            jobs.append(newJob)
+        }
+        hasJobs.post()
+        rwmutex.unlock()
+    }
+    
     /// Returns first job from queue, if exist.
     ///
     internal func pull() -> PSXJob? {
         rwmutex.lock()
         var job: PSXJob?
         if jobs.count > 0 {
-            job = jobs.remove(at: 0)
+            job = jobs.remove(at: jobs.startIndex)
             if jobs.count > 0 { hasJobs.post() }
         }
         rwmutex.unlock()
         return job
-    }
-    
-    /// Adds job to queue.
-    ///
-    /// - Parameter newJob: The job to be performed.
-    ///
-    internal func put(newJob: PSXJob) {
-        rwmutex.lock()
-        jobs.append(newJob)
-        hasJobs.post()
-        rwmutex.unlock()
     }
     
     /// Clears the queue.

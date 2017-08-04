@@ -35,6 +35,10 @@ public class PSXCondition {
         pthread_cond_destroy(&condition)
     }
     
+}
+
+extension PSXCondition {
+
     /// Blocks on a condition variable. It must be called with mutex locked by the calling thread,
     /// or undefined behavior will result.
     ///

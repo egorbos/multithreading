@@ -30,12 +30,16 @@ internal class PSXRunLoop {
         self.thread = thread
     }
     
+}
+
+extension PSXRunLoop {
+
     /// Begins the process of waiting for new jobs to a private queue and have them executed.
     ///
-    internal func start() {
+    internal func run() {
         active = true
         thread.status = .waiting
-        
+
         while active == true {
             thread.privateQueue.hasJobs.wait()
             

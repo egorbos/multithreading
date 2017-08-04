@@ -261,6 +261,9 @@ class MultithreadingTests: XCTestCase {
         
         let thread = PSXThread()
         thread.start()
+        
+        while thread.status != .waiting {}
+        
         thread.pause()
         
         while thread.status != .paused {}

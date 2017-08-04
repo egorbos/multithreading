@@ -29,9 +29,7 @@ public enum PSXThreadStatus: UInt8 {
 }
 
 public class PSXThread {
-    
-    // MARK: Properties, initialization, deinitialization
-    
+        
     /// POSIX thread
     #if os(OSX) || os(iOS)
         internal var pthread: pthread_t? = nil
@@ -62,7 +60,9 @@ public class PSXThread {
         set {
             if status == .inactive { _name = newValue }
         }
-        get { return _name }
+        get {
+            return _name
+        }
     }
     fileprivate var _name = "com.swixbase.multithreading.psxthread"
     
@@ -91,9 +91,32 @@ public class PSXThread {
         addJob(job)
     }
     
-    deinit { exit() }
+    deinit { cancel() }
+
+}
+
+extension PSXThread {
     
-    // MARK: Methods
+    /// Puts a block of code in a private queue.
+    ///
+    /// - Parameter job: A job that will be executed in the thread.
+    ///
+    internal func addJob(_ job: PSXJob) {
+        privateQueue.put(newJob: job, priority: .normal)
+    }
+
+    /// Puts a block of code in a private queue.
+    ///
+    /// - Parameter block: A block of code that will be executed in the thread.
+    ///
+    public func doJob(_ block: @escaping () -> Void) {
+        let job = PSXJob(block: block)
+        privateQueue.put(newJob: job, priority: .normal)
+    }
+
+}
+
+extension PSXThread {
     
     /// Creates a new thread.
     ///
@@ -104,47 +127,23 @@ public class PSXThread {
     /// Starts an infinite loop in which the job directed to the thread are executed.
     ///
     internal func run() {
-        if let runLoop = runLoop { runLoop.start() }
-    }
-
-    /// Puts a block of code in a private queue.
-    ///
-    /// - Parameter block: A block of code that will be executed in the thread.
-    ///
-    public func doJob(_ block: @escaping () -> Void) {
-        let job = PSXJob(block: block)
-        privateQueue.put(newJob: job)
+        if let runLoop = runLoop { runLoop.run() }
     }
     
-    /// Puts a block of code in a private queue.
-    ///
-    /// - Parameter job: A job that will be executed in the thread.
-    ///
-    internal func addJob(_ job: PSXJob) {
-        privateQueue.put(newJob: job)
-    }
-    
-    /// Terminates the thread.
-    ///
-    public func exit() {
-        doJob {
-            if let runLoop = self.runLoop { runLoop.stop() }
-            pthread_exit(nil)
-        }
-        status = .inactive
-    }
-    
-    /// Pause the execution of jobs by the current thread.
+    /// Pause the execution of jobs by the thread.
     ///
     public func pause() {
-        doJob {
-            if let runLoop = self.runLoop {
-                runLoop.stop()
-                self.status = .paused
-                var sig: Int32 = 0
-                sigwait(&self.resumeSignal, &sig)
-                runLoop.start()
-            }
+        if status != .inactive && status != .paused {
+            let job = PSXJob(block: { 
+                if let runLoop = self.runLoop {
+                    runLoop.stop()
+                    self.status = .paused
+                    var sig: Int32 = 0
+                    sigwait(&self.resumeSignal, &sig)
+                    runLoop.run()
+                }
+            })
+            privateQueue.put(newJob: job, priority: .high)
         }
     }
     
@@ -158,32 +157,38 @@ public class PSXThread {
         #endif
     }
     
+    /// Terminates the thread.
+    ///
+    public func cancel() {
+        if let runLoop = self.runLoop { runLoop.stop() }
+        #if os(OSX) || os(iOS)
+            pthread_cancel(pthread!)
+        #elseif os(Linux)
+            pthread_cancel(pthread)
+        #endif
+        status = .inactive
+    }
+    
 }
 
 /// Main routine of starting thread.
-#if os(OSX) || os(iOS)
-    fileprivate func runThread(arg: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
-        /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
-        let thread = arg.assumingMemoryBound(to: PSXThread.self).pointee
+fileprivate func runThread(argument: UnsafeMutableRawPointer) -> UnsafeMutableRawPointer? {
+    return runThread(arg: argument)
+}
+
+fileprivate func runThread(arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
+    /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
+    if let thread = arg?.assumingMemoryBound(to: PSXThread.self).pointee {
         /// Set thread name for profiling and debugging
         if let nameChars = thread.name.cString(using: .utf8) {
-            pthread_setname_np(nameChars)
+            #if os(OSX) || os(iOS)
+                pthread_setname_np(nameChars)
+            #elseif os(Linux)
+                linux_pthread_setname_np(thread.pthread, nameChars)
+            #endif
         }
         /// Starts an infinite loop in which the job directed to the thread are executed.
         thread.run()
-        return nil
     }
-#elseif os(Linux)
-    fileprivate func runThread(arg: UnsafeMutableRawPointer?) -> UnsafeMutableRawPointer? {
-        /// Get an instance of the PSXThread class, to run the execution loop in a created thread.
-        if let thread = arg?.assumingMemoryBound(to: PSXThread.self).pointee {
-            /// Set thread name for profiling and debugging
-            if let nameChars = thread.name.cString(using: .utf8) {
-                linux_pthread_setname_np(thread.pthread, nameChars)
-            }
-            /// Starts an infinite loop in which the job directed to the thread are executed.
-            thread.run()
-        }
-        return nil
-    }
-#endif
+    return nil
+}

@@ -35,6 +35,10 @@ public class PSXMutex {
         pthread_mutex_destroy(&mutex)
     }
     
+}
+
+extension PSXMutex {
+
     /// Locks the mutex object. If the mutex is already locked, the calling thread shall block
     /// until the mutex becomes available. This operation shall return with the mutex
     /// object referenced by mutex in the locked state with the calling thread as its owner.

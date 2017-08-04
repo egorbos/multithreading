@@ -24,6 +24,9 @@ public class PSXWorkerThread: PSXThread {
     /// Friendly id
     public let id: Int
     
+    // TODO: - NEW
+    internal var lastActivity: Date
+    
     /// Initialization.
     ///
     /// - Parameters:
@@ -33,6 +36,7 @@ public class PSXWorkerThread: PSXThread {
     internal init(pool: PSXThreadPool, id: Int) {
         self.id = id
         self.pool = pool
+        self.lastActivity = Date()
         super.init()
     }
     
@@ -42,5 +46,10 @@ internal extension Array where Element: PSXWorkerThread {
     internal func withMinJobs() -> Element {
         let min = self.min { $0.privateQueue.jobsCount < $1.privateQueue.jobsCount }
         return min!
+    }
+    
+    internal func lastActive() -> Element {
+        let max = self.max { $0.lastActivity.timeIntervalSinceNow < $1.lastActivity.timeIntervalSinceNow }
+        return max!
     }
 }

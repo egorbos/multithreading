@@ -38,6 +38,19 @@ public class PSXSemaphore {
         self.value = value
     }
     
+}
+
+extension PSXSemaphore {
+    
+    /// Waits on semaphore until semaphore has value 0.
+    ///
+    public func wait() {
+        mutex.lock()
+        while value != .one { condition.wait(mutex: mutex) }
+        value = .zero
+        mutex.unlock()
+    }
+    
     /// Increments the value of the semaphore and wakes up
     /// at least one blocked thread waiting on the semaphore, if any.
     ///
@@ -55,15 +68,6 @@ public class PSXSemaphore {
         mutex.lock()
         value = .one
         condition.broadcast()
-        mutex.unlock()
-    }
-    
-    /// Waits on semaphore until semaphore has value 0.
-    ///
-    public func wait() {
-        mutex.lock()
-        while value != .one { condition.wait(mutex: mutex) }
-        value = .zero
         mutex.unlock()
     }
     

@@ -34,14 +34,22 @@ public class PSXQueue {
     ///         Concurrent queues allow multiple jobs to run at the same time.
     ///
     public init(name: String, type: PSXQueueType) {
+        pool = PSXThreadPool(count: 1)
         if type == .concurrent {
-            pool = PSXThreadPool(count: 4)
-        } else {
-            pool = PSXThreadPool(count: 1)
+            pool.autopause = true
+            pool.autocreate = true
+            pool.maxPrivateJobsCount = 5
+            pool.maxThreadsCount = 5
         }
         pool.prefix = name
     }
     
+    deinit { pool.destroy() }
+
+}
+
+extension PSXQueue {
+
     /// Performs the block of code.
     ///
     /// - Parameter block: A block of code that will be performed.
@@ -49,7 +57,5 @@ public class PSXQueue {
     public func perform(_ block: @escaping () -> Void) {
         pool.addJob(block)
     }
- 
-    deinit { pool.destroy() }
 
 }

@@ -43,6 +43,28 @@ public class PSXThreadPool {
     /// The status of waiting for the completion of all jobs from the global queue.
     internal var waiting = false
     
+    // TODO: - NEW
+    public var autopause = false
+    public var autocreate = false
+    public var maxThreadsCount = 50
+    public var minThreadsCount = 1
+    public var threadsInactivityTime = 300
+    fileprivate var _maxPrivateJobs = 5
+    public var maxPrivateJobsCount: Int {
+        get {
+            if autocreate == true {
+                return _maxPrivateJobs
+            } else {
+                return Int.max
+            }
+        }
+        set {
+            if autocreate == true {
+                _maxPrivateJobs = newValue
+            }
+        }
+    }
+    
     /// Returns alive worker threads in pool.
     public var aliveThreads: [PSXWorkerThread] {
         threadsMutex.lock()
@@ -95,6 +117,10 @@ public class PSXThreadPool {
     
     deinit { destroy() }
     
+}
+
+extension PSXThreadPool {
+
     /// Creates a certain number of threads.
     ///
     /// Parameter count: The number of threads to create.
@@ -157,17 +183,25 @@ public class PSXThreadPool {
         guard let id = userThreadsKeys[key], let thread = workerThreads.removeValue(forKey: id) else {
             return
         }
-        thread.exit()
+        thread.cancel()
     }
     
+}
+
+extension PSXThreadPool {
+
     /// Adds job to the thread pool.
     ///
     /// - Parameter block: A block of code that will be performed.
     ///
     public func addJob(_ block: @escaping () -> Void) {
         let job = PSXJob(block: block)
-        globalQueue.put(newJob: job)
+        globalQueue.put(newJob: job, priority: .normal)
     }
+    
+}
+
+extension PSXThreadPool {
     
     /// Waits until all jobs from global queue have finished.
     ///
@@ -184,16 +218,8 @@ public class PSXThreadPool {
     /// Terminates all worker threads, and scheduler threads.
     ///
     internal func destroy() {
-        for worker in workerThreads { worker.value.exit() }
+        for worker in workerThreads { worker.value.cancel() }
         if let sh = scheduler { sh.destroy() }
-    }
-    
-    func pause() {
-        /// Unimplemented
-    }
-    
-    func resume() {
-        /// Unimplemented
     }
     
 }

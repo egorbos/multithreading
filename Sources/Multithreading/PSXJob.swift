@@ -14,6 +14,11 @@
 
 import Foundation
 
+public enum PSXJobPriority: UInt8 {
+    case normal = 0
+    case high   = 1
+}
+
 internal class PSXJob {
     
     /// A block of code to be performed.
@@ -27,6 +32,12 @@ internal class PSXJob {
         self.block = { _ in block() }
     }
     
+}
+
+extension PSXJob {
+
+    /// Performs a block of code.
+    ///
     internal func make() {
         block()
     }
