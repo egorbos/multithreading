@@ -4,6 +4,6 @@ os:
 language: generic
 sudo: required
 dist: trusty
-osx_image: xcode8.3
+osx_image: xcode9
 script:
-  - eval "$(curl -sL https://raw.githubusercontent.com/swixbase/ciscript/master/ci-3.1)"
+  - eval "$(curl -sL https://raw.githubusercontent.com/swixbase/ciscript/master/ci-4.0)"

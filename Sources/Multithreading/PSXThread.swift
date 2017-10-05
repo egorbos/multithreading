@@ -16,7 +16,7 @@
     import Darwin
 #elseif os(Linux)
     import Glibc
-    import Linuxhelper
+    import LXPThread
 #endif
 
 import Foundation

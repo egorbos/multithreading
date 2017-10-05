@@ -29,7 +29,7 @@ internal class PSXJob {
     /// - Parameter block: A block of code that will be performed.
     ///
     internal init(block: @escaping () -> Void) {
-        self.block = { _ in block() }
+        self.block = { block() }
     }
     
 }

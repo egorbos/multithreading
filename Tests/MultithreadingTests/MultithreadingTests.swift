@@ -19,7 +19,7 @@ import Foundation
     import Darwin
 #elseif os(Linux)
     import Glibc
-    import Linuxhelper
+    import LXPThread
 #endif
 
 @testable import Multithreading
